@@ -708,119 +708,137 @@ export default function LegacyChatFeed({
         let actionStep: BrowserStep | null = null;
 
         if (computerItem) {
-          const action = computerItem.action;
+          const actions =
+            computerItem.actions && computerItem.actions.length > 0
+              ? computerItem.actions
+              : computerItem.action
+                ? [computerItem.action]
+                : [];
+          const action = actions[0];
 
-          switch (action.type) {
-            case "click":
-              actionStep = {
-                text: `Clicking at position (${action.x}, ${action.y})`,
-                reasoning: generateDetailedReasoning(
-                  action,
-                  "click",
-                  contextClues,
-                  createTaskDescription
-                ),
-                tool: "CLICK",
-                instruction: `click(${action.x}, ${action.y})`,
-                stepNumber: stepNumber++,
-              };
-              break;
-            case "type":
-              actionStep = {
-                text: `Typing text: "${action.text}"`,
-                reasoning: generateDetailedReasoning(
-                  action,
-                  "type",
-                  contextClues,
-                  createTaskDescription
-                ),
-                tool: "TYPE",
-                instruction: action.text || "",
-                stepNumber: stepNumber++,
-              };
-              break;
-            case "keypress":
-              actionStep = {
-                text: `Pressing keys: ${action.keys?.join(", ")}`,
-                reasoning: generateDetailedReasoning(
-                  action,
-                  "keypress",
-                  contextClues,
-                  createTaskDescription
-                ),
-                tool: "KEYPRESS",
-                instruction: action.keys?.join(", ") || "",
-                stepNumber: stepNumber++,
-              };
-              break;
-            case "scroll":
-              actionStep = {
-                text: `Scrolling by (${action.scroll_x}, ${action.scroll_y})`,
-                reasoning: generateDetailedReasoning(
-                  action,
-                  "scroll",
-                  contextClues,
-                  createTaskDescription
-                ),
-                tool: "SCROLL",
-                instruction: `scroll(${action.scroll_x}, ${action.scroll_y})`,
-                stepNumber: stepNumber++,
-              };
-              break;
-            default:
-              // Create more specific text descriptions for different action types
-              let actionText = `Performing ${action.type} action`;
+          if (!action) {
+            actionStep = {
+              text: "Waiting for the next browser action",
+              reasoning:
+                "The model returned a computer call without a concrete action payload.",
+              tool: "WAIT",
+              instruction: "",
+              stepNumber: stepNumber++,
+            };
+          } else {
 
-              if (action.type === "wait") {
-                actionText = "Waiting for page to respond";
-              } else if (action.type === "double_click") {
-                actionText = `Double-clicking at position (${action.x || 0}, ${
-                  action.y || 0
-                })`;
-              } else if (action.type === "drag") {
-                // Drag has a path array with start and end points
-                const startPoint = action.path?.[0] || { x: 0, y: 0 };
-                const endPoint = action.path?.[action.path?.length - 1] || {
-                  x: 0,
-                  y: 0,
+            switch (action.type) {
+              case "click":
+                actionStep = {
+                  text: `Clicking at position (${action.x}, ${action.y})`,
+                  reasoning: generateDetailedReasoning(
+                    action,
+                    "click",
+                    contextClues,
+                    createTaskDescription
+                  ),
+                  tool: "CLICK",
+                  instruction: `click(${action.x}, ${action.y})`,
+                  stepNumber: stepNumber++,
                 };
-                actionText = `Dragging from (${startPoint.x}, ${startPoint.y}) to (${endPoint.x}, ${endPoint.y})`;
-              } else if (action.type === "screenshot") {
-                actionText = "Taking screenshot of current page";
-              } else if (action.type === "move") {
-                actionText = `Moving cursor to position (${action.x || 0}, ${
-                  action.y || 0
-                })`;
-              }
+                break;
+              case "type":
+                actionStep = {
+                  text: `Typing text: "${action.text}"`,
+                  reasoning: generateDetailedReasoning(
+                    action,
+                    "type",
+                    contextClues,
+                    createTaskDescription
+                  ),
+                  tool: "TYPE",
+                  instruction: action.text || "",
+                  stepNumber: stepNumber++,
+                };
+                break;
+              case "keypress":
+                actionStep = {
+                  text: `Pressing keys: ${action.keys?.join(", ")}`,
+                  reasoning: generateDetailedReasoning(
+                    action,
+                    "keypress",
+                    contextClues,
+                    createTaskDescription
+                  ),
+                  tool: "KEYPRESS",
+                  instruction: action.keys?.join(", ") || "",
+                  stepNumber: stepNumber++,
+                };
+                break;
+              case "scroll":
+                actionStep = {
+                  text: `Scrolling by (${action.scroll_x}, ${action.scroll_y})`,
+                  reasoning: generateDetailedReasoning(
+                    action,
+                    "scroll",
+                    contextClues,
+                    createTaskDescription
+                  ),
+                  tool: "SCROLL",
+                  instruction: `scroll(${action.scroll_x}, ${action.scroll_y})`,
+                  stepNumber: stepNumber++,
+                };
+                break;
+              default:
+                // Create more specific text descriptions for different action types
+                let actionText = `Performing ${action.type} action`;
 
-              actionStep = {
-                text: actionText,
-                reasoning: generateDetailedReasoning(
-                  action,
-                  action.type,
-                  contextClues,
-                  createTaskDescription
-                ),
-                tool: action.type.toUpperCase() as unknown as
-                  | "GOTO"
-                  | "ACT"
-                  | "EXTRACT"
-                  | "OBSERVE"
-                  | "CLOSE"
-                  | "WAIT"
-                  | "NAVBACK"
-                  | "MESSAGE"
-                  | "CLICK"
-                  | "TYPE"
-                  | "KEYPRESS"
-                  | "SCROLL"
-                  | "DOUBLECLICK"
-                  | "DRAG"
-                  | "SCREENSHOT"
-                  | "MOVE",
-                instruction: action.type,
-                stepNumber: stepNumber++,
-              };
+                if (action.type === "wait") {
+                  actionText = "Waiting for page to respond";
+                } else if (action.type === "double_click") {
+                  actionText = `Double-clicking at position (${action.x || 0}, ${
+                    action.y || 0
+                  })`;
+                } else if (action.type === "drag") {
+                  // Drag has a path array with start and end points
+                  const startPoint = action.path?.[0] || { x: 0, y: 0 };
+                  const endPoint = action.path?.[action.path?.length - 1] || {
+                    x: 0,
+                    y: 0,
+                  };
+                  actionText = `Dragging from (${startPoint.x}, ${startPoint.y}) to (${endPoint.x}, ${endPoint.y})`;
+                } else if (action.type === "screenshot") {
+                  actionText = "Taking screenshot of current page";
+                } else if (action.type === "move") {
+                  actionText = `Moving cursor to position (${action.x || 0}, ${
+                    action.y || 0
+                  })`;
+                }
+
+                actionStep = {
+                  text: actionText,
+                  reasoning: generateDetailedReasoning(
+                    action,
+                    action.type,
+                    contextClues,
+                    createTaskDescription
+                  ),
+                  tool: action.type.toUpperCase() as unknown as
+                    | "GOTO"
+                    | "ACT"
+                    | "EXTRACT"
+                    | "OBSERVE"
+                    | "CLOSE"
+                    | "WAIT"
+                    | "NAVBACK"
+                    | "MESSAGE"
+                    | "CLICK"
+                    | "TYPE"
+                    | "KEYPRESS"
+                    | "SCROLL"
+                    | "DOUBLECLICK"
+                    | "DRAG"
+                    | "SCREENSHOT"
+                    | "MOVE",
+                  instruction: action.type,
+                  stepNumber: stepNumber++,
+                };
+            }
           }
         } else if (functionItem) {
           switch (functionItem.name) {
@@ -1323,15 +1341,15 @@ export default function LegacyChatFeed({
             target="_blank"
             rel="noopener noreferrer"
           >
-            <button className=" flex items-center justify-center px-3 py-2 bg-white gap-1 text-sm font-medium border border-[#F14A1C] transition-all duration-200 hover:bg-[#F14A1C] group h-full">
+            <button className=" flex items-center justify-center px-3 py-2 bg-white gap-1 text-sm font-medium border border-[#FF4500] transition-all duration-200 hover:bg-[#FF4500] group h-full">
               <Layers
                 size={20}
-                className="sm:mr-2 text-[#F14A1C] group-hover:text-white transition-colors duration-200"
+                className="sm:mr-2 text-[#FF4500] group-hover:text-white transition-colors duration-200"
                 strokeWidth={2}
                 strokeLinecap="square"
                 strokeLinejoin="miter"
               />
-              <span className="hidden sm:inline text-[#F14A1C] group-hover:text-white transition-colors  duration-200">
+              <span className="hidden sm:inline text-[#FF4500] group-hover:text-white transition-colors  duration-200">
                 Deploy
               </span>
             </button>
@@ -1754,18 +1772,18 @@ export default function LegacyChatFeed({
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
                     placeholder="Type your message..."
-                    className="flex-1 px-2 sm:px-4 py-2 border focus:outline-none focus:ring-1 focus:ring-[#FF3B00] focus:border-transparent font-ppsupply transition-all text-sm sm:text-base"
+                    className="flex-1 px-2 sm:px-4 py-2 border focus:outline-none focus:ring-1 focus:ring-[#FF4500] focus:border-transparent font-ppsupply transition-all text-sm sm:text-base"
                     style={{
                       // backgroundColor: "rgba(245, 240, 255, 0.75)",
                       backdropFilter: "blur(8px)",
-                      borderColor: "rgba(255, 59, 0, 0.5)",
+                      borderColor: "rgba(255, 69, 0, 0.5)",
                       borderWidth: "2px",
                     }}
                   />
                   <button
                     type="submit"
                     disabled={!userInput.trim()}
-                    className="px-2 sm:px-4 py-2 bg-[#FF3B00] text-white font-ppsupply disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E63500] transition-colors text-sm sm:text-base whitespace-nowrap"
+                    className="px-2 sm:px-4 py-2 bg-[#FF4500] text-white font-ppsupply disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E63E00] transition-colors text-sm sm:text-base whitespace-nowrap"
                   >
                     Send
                   </button>
